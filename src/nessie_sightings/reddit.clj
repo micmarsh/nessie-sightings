@@ -9,7 +9,8 @@
             mixed.FullSubmissionRequest]
            [com.github.jreddit.parser
             single.FullSubmissionParser
-            listing.SubmissionsListingParser]))
+            listing.SubmissionsListingParser
+            entity.imaginary.FullSubmission]))
 
 (def user-agent "P funk, uncut funk, the bomb")
 
@@ -54,3 +55,10 @@
            (.parse parser)
            (map (partial submission->full-submission token))))))
 
+(extend-type FullSubmission
+  p/GetComments
+  (comments
+    ([submission]
+       (.getCommentTree submission))
+    ([submission _]
+       (p/comments submission))))
