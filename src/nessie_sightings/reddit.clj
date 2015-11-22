@@ -48,12 +48,12 @@
         parse (FullSubmissionParser.)]
     (.parse parse (.get client token request))))
 
+(def more? (partial instance? More))
+
 (defn comments-response [comments]
-  (let [more (last comments)]
-    (if (instance? More more)
-      {:comments (butlast comments)
-       :more more}
-      {:comments comments})))
+  (let [more (first (filter more? comments))]
+    {:comments (remove more? comments)
+     :more more}))
 
 (defprotocol ^:private Token (token [client]))
 
@@ -69,52 +69,34 @@
           request (create-submission-request subreddit query)]
       (->> request
            (.get client (token this))
-           (.parse parser)
-           (map (partial submission->full-submission (token this))))))
+           (.parse parser))))
+  p/GetComments
+  (comments [this submisssion]
+    (->> submisssion
+         (submission->full-submission (token this))
+         (.getCommentTree)))
   p/NextComments
-  (next-comments [this {:keys [submission more]}]
-    (let [full-name (-> submission .getSubmission .getFullName)
+  (next-comments [this submission more]
+    (let [full-name (.getFullName submission)
           identifiers (.getChildren more)
           request (MoreCommentsRequest. full-name identifiers)]
       (-> (CommentsMoreParser.)
-          (.parse (.get client (token this) request))
-          (comments-response)))))
-
-(def texts
-  (comp (filter (partial satisfies? p/CommentText))
-        (map p/comment-text)))
-
-(extend-protocol p/GetComments
-  FullSubmission
-  (comments
-    ([submission]
-       (comments-response (.getCommentTree submission)))
-    ([submission _]
-       (p/comments submission))))
+          (.parse (.get client (token this) request))))))
 
 (extend-protocol p/CommentText
   Comment
-  (comment-text [this] (.getBodyHTML this)))
-
-(defn- recur-comments-query
-  [reddit submission {:keys [comments more]}]
-  (concat comments
-          (when more
-            (all-submission-comments reddit submission more))))
+  (comment-text [this] (.getBody this)))
 
 (defn all-submission-comments
   ([reddit submission]
-     (let [comments-result (p/comments submission)]
-       (recur-comments-query reddit submission comments-result)))
-  ([reddit submission more]
-     (let [query {:submission submission :more more}
-           comments-result (p/next-comments reddit query)]
-       (recur-comments-query reddit submission comments-result)))) 
+     (lazy-seq
+      (all-submission-comments reddit submission (p/comments reddit submission))))
+  ([reddit submission comments]
+     (lazy-seq
+      (let [{:keys [comments more]} (comments-response comments)]
+        (concat comments
+                (when more
+                  (let [comments (p/next-comments reddit submission more) ]
+                   (all-submission-comments reddit submission comments))))))))
 
-(defn comments-seq
-  "reddit client -> subreddit name -> [{:submission <submission>
-                                        :comment <comment>}]"
-  [reddit subreddit]
-  (mapcat
-   (partial all-submission-comments reddit)
-   (p/submissions reddit subreddit)))
+

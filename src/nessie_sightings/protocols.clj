@@ -11,13 +11,11 @@
 
 (defprotocol GetComments
   (comments
-    [entity]
-    [entity query]
-    "Query an entity (comment or submission) for comments.
-     Query options the same as above unless I discover that's not possible or desirable."))
+    [reddit entity]
+    "Query an entity (comment or submission) for comments."))
 
 (defprotocol NextComments
-  (next-comments [reddit ref]
+  (next-comments [reddit parent-sub more]
     "Given a ref (a More in jReddit), load up some more comments"))
 
 (defprotocol CommentText
