@@ -5,4 +5,5 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [mutils "0.1.0-SNAPSHOT"]
+                 [org.clojure/core.async "0.2.374"]
                  [com.github.jreddit/jreddit "1.0.4-SNAPSHOT"]])
